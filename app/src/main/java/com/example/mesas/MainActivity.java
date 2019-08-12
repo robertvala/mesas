@@ -6,6 +6,7 @@ import android.os.Handler;
 
 import androidx.core.view.GravityCompat;
 
+import android.util.Log;
 import android.view.MenuItem;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -22,6 +23,7 @@ import android.view.Menu;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 
@@ -48,13 +50,21 @@ public class MainActivity extends AppCompatActivity
     private RecyclerView.Adapter mAdapter;
     private RecyclerView.LayoutManager mLayoutManager;
     private ArrayList<Item> items= new ArrayList<Item>();
+    //Datos para ingresar a la base de datos
+    private String serverIP = "remotemysql.com";
+    private String port = "3306";
+    private String userMySQL = "wlhkKlqhlA";
+    private String pwdMySQL = "fuEhEabZuG";
+    private String database = "wlhkKlqhlA";
+    private String[] datosConexion = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_main);
-        items.add(new Item("1",R.drawable.ic_restaurant_black_24dp,"Mesa 1","Sillas disponibles: 10"));
+        generarMesas();
+        /*items.add(new Item("1",R.drawable.ic_restaurant_black_24dp,"Mesa 1","Sillas disponibles: 10"));
         items.add(new Item("2",R.drawable.ic_restaurant_black_24dp,"Mesa 2","Sillas disponibles: 4"));
         items.add(new Item("3",R.drawable.ic_restaurant_black_24dp,"Mesa 3","Sillas disponibles: 0"));
         items.add(new Item("4",R.drawable.ic_restaurant_black_24dp,"Mesa 4","Sillas disponibles: 1"));
@@ -63,7 +73,7 @@ public class MainActivity extends AppCompatActivity
         items.add(new Item("7",R.drawable.ic_restaurant_black_24dp,"Mesa 7","Sillas disponibles: 8"));
         items.add(new Item("8",R.drawable.ic_restaurant_black_24dp,"Mesa 8","Sllas disponibles: 4"));
         items.add(new Item("9",R.drawable.ic_restaurant_black_24dp,"Mesa 9","Sillas disponibles: 4"));
-        items.add(new Item("10",R.drawable.ic_restaurant_black_24dp,"Mesa 10","Sillas disponibles: 4"));
+        items.add(new Item("10",R.drawable.ic_restaurant_black_24dp,"Mesa 10","Sillas disponibles: 4"));*/
 
 
         //Se setea cuantas mesas hay
@@ -196,5 +206,42 @@ public class MainActivity extends AppCompatActivity
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
         return true;
+    }
+
+    public void generarMesas()
+    {
+        String[] resultadoSQL = null;
+        try{
+            datosConexion = new String[]{
+                    serverIP,
+                    port,
+                    database,
+                    userMySQL,
+                    pwdMySQL,
+                    "SELECT * FROM mesa;"
+            };
+            String driver = "com.mysql.jdbc.Driver";
+            Class.forName(driver).newInstance();
+            resultadoSQL = new AsyncQuery().execute(datosConexion).get();
+            Toast.makeText(MainActivity.this,"Conexión Establecida", Toast.LENGTH_LONG).show();
+
+            String resultadoConsulta = resultadoSQL[0];
+            //Log.e("Resultado",resultadoConsulta);
+            String[] datosMesas =  resultadoConsulta.split("\n");
+            for(int u=0;u<datosMesas.length;u++){
+                String[] resultado = datosMesas[u].split(",");
+                items.add(new Item(resultado[0],R.drawable.ic_restaurant_black_24dp,"Mesa "+resultado[0],"Sillas disponibles: "+resultado[1]));
+            }
+            }catch(Exception ex)
+            {
+                Toast.makeText(this, "Error al obtener resultados de la consulta Transact-SQL: "
+                    + ex.getMessage(), Toast.LENGTH_LONG).show();
+
+            }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
     }
 }
