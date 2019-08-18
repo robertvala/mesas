@@ -1,9 +1,12 @@
 package com.example.mesas;
 
+import android.content.Intent;
 import android.os.Bundle;
 
 import android.os.Handler;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.view.GravityCompat;
 
 import android.util.Log;
@@ -25,18 +28,24 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
     //PROGRESS BAR DE LAS SILLAS DISPONIBLES
         private ProgressBar Progressbar_SD;
         private ProgressBar Progressbar_MS;
-        //Numero de sillas disponibles
+    //Numero de sillas disponibles
         private TextView num_sillas;
-        //Numero de mesas disponibles
+    //Numero de mesas disponibles
         private TextView num_mesas;
-        //PROGRESS BAR DE LAS SILLAS EN USO
+    //PROGRESS BAR DE LAS SILLAS EN USO
         private Handler mHandler= new Handler();
     //PROGRESS BAR DE LAS MESAS DISPONIBLES
         private int MSStatus=0;
@@ -45,36 +54,30 @@ public class MainActivity extends AppCompatActivity
         private int SDStatusfin=50;
         private TextView txt_sd;
         private TextView txt_mu;
-
-    private RecyclerView mRecyclerView;
-    private RecyclerView.Adapter mAdapter;
-    private RecyclerView.LayoutManager mLayoutManager;
-    private ArrayList<Item> items= new ArrayList<Item>();
+    //Vistas y adaptadores
+        private RecyclerView mRecyclerView;
+        private RecyclerView.Adapter mAdapter;
+        private RecyclerView.LayoutManager mLayoutManager;
     //Datos para ingresar a la base de datos
-    private String serverIP = "remotemysql.com";
-    private String port = "3306";
-    private String userMySQL = "wlhkKlqhlA";
-    private String pwdMySQL = "fuEhEabZuG";
-    private String database = "wlhkKlqhlA";
-    private String[] datosConexion = null;
+        private String serverIP = "remotemysql.com";
+        private String port = "3306";
+        private String userMySQL = "wlhkKlqhlA";
+        private String pwdMySQL = "fuEhEabZuG";
+        private String database = "wlhkKlqhlA";
+        String driver = "com.mysql.jdbc.Driver";
+        private String[] datosConexion = null;
+    //Array de mesas e items
+        private ArrayList<Mesa> mesas = new ArrayList<>();
+        private ArrayList<Item> items= new ArrayList<Item>();
+        private ArrayList<Silla> sillas = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+        setTheme(R.style.AppTheme_NoActionBar);
         setContentView(R.layout.activity_main);
-        generarMesas();
-        /*items.add(new Item("1",R.drawable.ic_restaurant_black_24dp,"Mesa 1","Sillas disponibles: 10"));
-        items.add(new Item("2",R.drawable.ic_restaurant_black_24dp,"Mesa 2","Sillas disponibles: 4"));
-        items.add(new Item("3",R.drawable.ic_restaurant_black_24dp,"Mesa 3","Sillas disponibles: 0"));
-        items.add(new Item("4",R.drawable.ic_restaurant_black_24dp,"Mesa 4","Sillas disponibles: 1"));
-        items.add(new Item("5",R.drawable.ic_restaurant_black_24dp,"Mesa 5","Sillas disponibles: 5"));
-        items.add(new Item("6",R.drawable.ic_restaurant_black_24dp,"Mesa 6","Sillas disponibles: 7"));
-        items.add(new Item("7",R.drawable.ic_restaurant_black_24dp,"Mesa 7","Sillas disponibles: 8"));
-        items.add(new Item("8",R.drawable.ic_restaurant_black_24dp,"Mesa 8","Sllas disponibles: 4"));
-        items.add(new Item("9",R.drawable.ic_restaurant_black_24dp,"Mesa 9","Sillas disponibles: 4"));
-        items.add(new Item("10",R.drawable.ic_restaurant_black_24dp,"Mesa 10","Sillas disponibles: 4"));*/
-
+        generarItems();
+        setMesasEnSillas(mesas);
 
         //Se setea cuantas mesas hay
         MSStatusfin=items.size();
@@ -105,9 +108,9 @@ public class MainActivity extends AppCompatActivity
         num_mesas=findViewById(R.id.num_mesas);
 
         //Setea el numero de sillas disponibles
-        num_sillas.setText(String.valueOf(SDStatusfin));
+        num_sillas.setText(String.valueOf(sillas.size()));
         //Setea el numero de mesas disponibles
-        num_mesas.setText(String.valueOf(MSStatusfin));
+        num_mesas.setText(String.valueOf(mesas.size()));
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -146,8 +149,6 @@ public class MainActivity extends AppCompatActivity
 
     }
 
-
-
     public void liberarSilla(View v){
         SDStatusfin--;
     }
@@ -160,14 +161,12 @@ public class MainActivity extends AppCompatActivity
             super.onBackPressed();
         }
     }
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.main, menu);
         return true;
     }
-
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle action bar item clicks here. The action bar will
@@ -182,7 +181,6 @@ public class MainActivity extends AppCompatActivity
 
         return super.onOptionsItemSelected(item);
     }
-
     @SuppressWarnings("StatementWithEmptyBody")
     @Override
     public boolean onNavigationItemSelected(MenuItem item) {
@@ -208,19 +206,10 @@ public class MainActivity extends AppCompatActivity
         return true;
     }
 
-    public void generarMesas()
-    {
+    public void generarItems(){
         String[] resultadoSQL = null;
         try{
-            datosConexion = new String[]{
-                    serverIP,
-                    port,
-                    database,
-                    userMySQL,
-                    pwdMySQL,
-                    "SELECT * FROM mesa;"
-            };
-            String driver = "com.mysql.jdbc.Driver";
+            datosConexion = conexionBasedeDatos("SELECT * FROM mesa;");
             Class.forName(driver).newInstance();
             resultadoSQL = new AsyncQuery().execute(datosConexion).get();
             Toast.makeText(MainActivity.this,"Conexión Establecida", Toast.LENGTH_LONG).show();
@@ -228,9 +217,11 @@ public class MainActivity extends AppCompatActivity
             String resultadoConsulta = resultadoSQL[0];
             //Log.e("Resultado",resultadoConsulta);
             String[] datosMesas =  resultadoConsulta.split("\n");
-            for(int u=0;u<datosMesas.length;u++){
-                String[] resultado = datosMesas[u].split(",");
-                items.add(new Item(resultado[0],R.drawable.ic_restaurant_black_24dp,"Mesa "+resultado[0],"Sillas disponibles: "+resultado[1]));
+            for (String datosMesa : datosMesas) {
+                String[] resultado = datosMesa.split(",");
+                items.add(new Item(resultado[0], R.drawable.ic_restaurant_black_24dp, "Mesa " + resultado[0], "Sillas disponibles: " + resultado[1]));
+                Mesa mesa = new Mesa(Integer.valueOf(resultado[0]),crearSillas(resultado[0]));
+                mesas.add(mesa);
             }
             }catch(Exception ex)
             {
@@ -239,9 +230,59 @@ public class MainActivity extends AppCompatActivity
 
             }
     }
-
     @Override
     protected void onResume() {
         super.onResume();
+    }
+
+    private String[] conexionBasedeDatos(String string){
+        return new String[]{
+                serverIP,
+                port,
+                database,
+                userMySQL,
+                pwdMySQL,
+                string
+        };
+    }
+
+    private void setMesasEnSillas(ArrayList<Mesa> mesas){
+        for(Mesa mesa: mesas){
+            ArrayList<Silla> sill = mesa.getSillas();
+            for(Silla silla: sill){
+                silla.setMesa(mesa);
+                sillas.add(silla);
+                Log.e("TAG",silla.toString());
+            }
+        }
+    }
+
+    private ArrayList<Silla> crearSillas(String string) {
+        ArrayList<Silla> sillas = new ArrayList<>();
+        String[] resultadoSQL = null;
+        try {
+            String[] datosConexion = conexionBasedeDatos("SELECT * FROM silla WHERE mesa=" + string+ ";");
+            Class.forName(driver).newInstance();
+            resultadoSQL = new AsyncQuery().execute(datosConexion).get();
+            String[] datosSillas = resultadoSQL[0].split("\n");
+            for(String datosSilla : datosSillas){
+                String[] resultado = datosSilla.split(",");
+                Silla silla = new Silla(Integer.valueOf(resultado[0]),convertirBooleano(resultado[1]));
+                sillas.add(silla);
+            }
+
+        } catch (Exception ex){
+            Log.e("TAG", Arrays.toString(ex.getStackTrace()));
+        }
+        return sillas;
+    }
+
+    private boolean convertirBooleano(String s){
+        if(s.equals("0")){
+            return false;
+        }else if(s.equals("1")){
+            return true;
+        }
+        return false;
     }
 }
