@@ -219,9 +219,29 @@ public class MainActivity extends AppCompatActivity
             String[] datosMesas =  resultadoConsulta.split("\n");
             for (String datosMesa : datosMesas) {
                 String[] resultado = datosMesa.split(",");
-                items.add(new Item(resultado[0], R.drawable.ic_restaurant_black_24dp, "Mesa " + resultado[0], "Sillas disponibles: " + resultado[1]));
+
+                if (resultado[2].equals("0")){
+                items.add(new Item(resultado[0], R.mipmap.ic_desocupada
+                        , "Mesa " + resultado[0], "Sillas disponibles: " + resultado[1]));
                 Mesa mesa = new Mesa(Integer.valueOf(resultado[0]),crearSillas(resultado[0]));
-                mesas.add(mesa);
+                mesas.add(mesa);}
+
+                else if (resultado[2].equals("1")){
+                    items.add(new Item(resultado[0], R.mipmap.ic_mesasemiocupada
+                            , "Mesa " + resultado[0], "Sillas disponibles: " + resultado[1]));
+                    Mesa mesa = new Mesa(Integer.valueOf(resultado[0]),crearSillas(resultado[0]));
+                    mesas.add(mesa);
+                }
+
+                else if (resultado[2].equals("2")){
+                    items.add(new Item(resultado[0], R.mipmap.mesa_ocupada
+                            , "Mesa " + resultado[0], "Sillas disponibles: " + resultado[1]));
+                    Mesa mesa = new Mesa(Integer.valueOf(resultado[0]),crearSillas(resultado[0]));
+                    mesas.add(mesa);
+
+                }
+
+
             }
             }catch(Exception ex)
             {
