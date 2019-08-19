@@ -50,8 +50,8 @@ public class MainActivity extends AppCompatActivity
     //PROGRESS BAR DE LAS MESAS DISPONIBLES
         private int MSStatus=0;
         private int SDStatus=0;
-        private int MSStatusfin;
-        private int SDStatusfin=50;
+        private int MSStatusfin=0;
+        private int SDStatusfin=0;
         private TextView txt_sd;
         private TextView txt_mu;
     //Vistas y adaptadores
@@ -66,6 +66,7 @@ public class MainActivity extends AppCompatActivity
         private String database = "wlhkKlqhlA";
         String driver = "com.mysql.jdbc.Driver";
         private String[] datosConexion = null;
+        private int numSillas;
     //Array de mesas e items
         private ArrayList<Mesa> mesas = new ArrayList<>();
         private ArrayList<Item> items= new ArrayList<Item>();
@@ -76,11 +77,16 @@ public class MainActivity extends AppCompatActivity
         super.onCreate(savedInstanceState);
         setTheme(R.style.AppTheme_NoActionBar);
         setContentView(R.layout.activity_main);
+        //Con el metodo generar items , se crean las cartas que aparecen de las mesas que tenemos a disposicon en el restaurante
+        //Este metodo tambien permite contar cuantas mesas hay completamante disponibles
         generarItems();
         setMesasEnSillas(mesas);
 
-        //Se setea cuantas mesas hay
-        MSStatusfin=items.size();
+        //con este metodo contamos cuantas sillas hay disponibles
+        contarSillas();
+
+
+
         mRecyclerView=findViewById(R.id.recyclerView);
         mRecyclerView.setHasFixedSize(true);
         mLayoutManager=new LinearLayoutManager(this);
@@ -103,14 +109,21 @@ public class MainActivity extends AppCompatActivity
 
 
         Progressbar_MS= findViewById(R.id.progress_mesas);
+
+        //decimos cual es el maximo numero de mesas
+        Progressbar_MS.setMax(items.size());
         Progressbar_SD=(ProgressBar) findViewById(R.id.progress_sillas);
+
+        //decimos cual es el maximo de la barra de sillas
+        Progressbar_SD.setMax(numSillas);
+
         num_sillas=findViewById(R.id.num_sillas);
         num_mesas=findViewById(R.id.num_mesas);
 
         //Setea el numero de sillas disponibles
-        num_sillas.setText(String.valueOf(sillas.size()));
+        num_sillas.setText(String.valueOf(SDStatusfin)+"/"+String.valueOf(numSillas));
         //Setea el numero de mesas disponibles
-        num_mesas.setText(String.valueOf(mesas.size()));
+        num_mesas.setText(String.valueOf(MSStatusfin)+"/"+String.valueOf(items.size()));
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -224,7 +237,8 @@ public class MainActivity extends AppCompatActivity
                 items.add(new Item(resultado[0], R.mipmap.ic_desocupada
                         , "Mesa " + resultado[0], "Sillas disponibles: " + resultado[1]));
                 Mesa mesa = new Mesa(Integer.valueOf(resultado[0]),crearSillas(resultado[0]));
-                mesas.add(mesa);}
+                mesas.add(mesa);
+                MSStatusfin++;}
 
                 else if (resultado[2].equals("1")){
                     items.add(new Item(resultado[0], R.mipmap.ic_mesasemiocupada
@@ -249,6 +263,35 @@ public class MainActivity extends AppCompatActivity
                     + ex.getMessage(), Toast.LENGTH_LONG).show();
 
             }
+    }
+
+
+    public void contarSillas(){
+        String[] resultadoSQL = null;
+        try{
+            String [] datosConexion2 = conexionBasedeDatos("SELECT * FROM silla;");
+            Class.forName(driver).newInstance();
+            resultadoSQL = new AsyncQuery().execute(datosConexion2).get();
+            Toast.makeText(MainActivity.this,"Conexión Establecida", Toast.LENGTH_LONG).show();
+
+            String resultadoConsulta = resultadoSQL[0];
+            //Log.e("Resultado",resultadoConsulta);
+            String[] datosMesas =  resultadoConsulta.split("\n");
+            for (String datosMesa : datosMesas) {
+                numSillas++;
+                String[] resultado = datosMesa.split(",");
+
+                if (resultado[1].equals("0")){
+                    SDStatusfin++;}
+
+
+            }
+        }catch(Exception ex)
+        {
+            Toast.makeText(this, "Error al obtener resultados de la consulta Transact-SQL: "
+                    + ex.getMessage(), Toast.LENGTH_LONG).show();
+
+        }
     }
     @Override
     protected void onResume() {
